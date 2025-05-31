@@ -2,14 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>È¸¿ø°¡ÀÔ</title>
+    <title>íšŒì›ê°€ì…</title>
 </head>
 <body>
-    <h1>È¸¿ø°¡ÀÔ</h1>
-    <input id="name" placeholder="ÀÌ¸§"><br />
-    <input id="grade" placeholder="ÇĞ³â"><br />
-    <input id="password" placeholder="ºñ¹Ğ¹øÈ£" type="password"><br />
-    <button onclick="register()">°¡ÀÔÇÏ±â</button>
+    <h1>íšŒì›ê°€ì…</h1>
+    <input id="name" placeholder="ì´ë¦„"><br />
+    <input id="grade" placeholder="í•™ë…„"><br />
+    <input id="password" placeholder="ë¹„ë°€ë²ˆí˜¸" type="password"><br />
+    <button onclick="register()">ê°€ì…í•˜ê¸°</button>
 
     <script>
     async function register() {
@@ -25,7 +25,7 @@
 
       const msg = await res.text();
       alert(msg);
-      if (msg.includes("È¸¿ø°¡ÀÔ")) {
+      if (msg.includes("íšŒì›ê°€ì…")) {
         window.location.href = "/login.html";
       }
     }
