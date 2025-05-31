@@ -149,6 +149,64 @@ app.post("/admin/pin/:postId", (req, res) => {
     res.send(`게시글이 ${pinned ? "고정" : "고정 해제"}되었습니다.`);
 });
 
+app.delete("/post/:id", (req, res) => {
+    const postId = parseInt(req.params.id);
+    const user = req.body.user;
+
+    const post = posts.find(p => p.id === postId);
+    if (!post) return res.status(404).send("글을 찾을 수 없습니다.");
+
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+    if (!foundUser || (post.author !== user.name && !foundUser.isAdmin)) {
+        return res.status(403).send("삭제 권한이 없습니다.");
+    }
+
+    posts = posts.filter(p => p.id !== postId);
+    res.send("삭제 완료!");
+});
+
+app.put("/post/:id", (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { title, content, user } = req.body;
+    const post = posts.find(p => p.id === postId);
+
+    if (!post) return res.status(404).send("글을 찾을 수 없습니다.");
+
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+    if (!foundUser || isBanned(foundUser)) return res.status(403).send("권한이 없습니다.");
+
+    const isOwner = post.author === user.name && post.grade === user.grade;
+    const isAdmin = foundUser.isAdmin;
+
+    if (!isOwner && !isAdmin) return res.status(403).send("수정 권한이 없습니다.");
+
+    post.title = title;
+    post.content = content;
+    res.send("수정 완료!");
+});
+
+app.post("/vote/:id", (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { user, voteType } = req.body;
+
+    const post = posts.find(p => p.id === postId);
+    if (!post) return res.status(404).send("글을 찾을 수 없습니다.");
+
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+    if (!foundUser || isBanned(foundUser)) return res.status(403).send("밴된 유저는 투표할 수 없습니다.");
+
+    const previousVote = post.voters?.[user.name];
+    if (previousVote) return res.status(400).send("이미 투표하셨습니다.");
+
+    if (!post.voters) post.voters = {};
+
+    if (voteType === "like") post.likes = (post.likes || 0) + 1;
+    else if (voteType === "dislike") post.dislikes = (post.dislikes || 0) + 1;
+
+    post.voters[user.name] = voteType;
+    res.send("투표 완료!");
+});
+
 // 서버 실행
 app.listen(3000, () => {
     console.log("서버 실행됨: http://localhost:3000");
