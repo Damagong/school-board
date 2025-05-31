@@ -289,3 +289,5 @@ app.listen(3000, () => {
     console.log("서버 실행됨: http://localhost:3000");
 });
 
+console.log("포스트 저장 시도:", posts);
+
