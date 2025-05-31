@@ -10,6 +10,17 @@
 
     <script>
         const user = JSON.parse(localStorage.getItem("user"));
+        if (!user) {
+            alert("로그인이 필요합니다");
+            location.href = "/login.html";
+        } else if (!user.isAdmin) {
+            alert("관리자 권한이 없습니다");
+            location.href = "/board.html";
+        }
+    </script>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem("user"));
         if (!user || !user.name) {
             alert("로그인 후 이용해주세요.");
             location.href = "/login.html";
@@ -26,19 +37,19 @@
             const users = await res.json();
             const container = document.getElementById("userList");
             container.innerHTML = users.map(u => `
-  <div>
-    👤 ${u.name} (${u.grade}학년)
-    ${u.isAdmin ? "🛡️ 관리자" : ""}
-    ${u.bannedUntil ? `⛔ 밴됨 ~ ${u.bannedUntil.split("T")[0]}` : ""}
-    
-    ${user.name !== u.name ? `
-      <button onclick="toggleAdmin('${u.name}', ${!u.isAdmin})">
-        ${u.isAdmin ? "권한 회수" : "관리자 부여"}
-      </button>
-      <button onclick="banUser('${u.name}', 7)">7일 밴</button>
-      <button onclick="banUser('${u.name}', 0)">해제</button>
-    ` : ""}
-  </div>
+      <div>
+        👤 ${u.name} (${u.grade}학년)
+        ${u.isAdmin ? "🛡️ 관리자" : ""}
+        ${u.bannedUntil ? `⛔ 밴됨 ~ ${u.bannedUntil.split("T")[0]}` : ""}
+
+        ${user.name !== u.name ? `
+          <button onclick="toggleAdmin('${u.name}', ${!u.isAdmin})">
+            ${u.isAdmin ? "권한 회수" : "관리자 부여"}
+          </button>
+          <button onclick="banUser('${u.name}', 7)">7일 밴</button>
+          <button onclick="banUser('${u.name}', 0)">해제</button>
+        ` : ""}
+      </div>
 `).join("");
         }
 
