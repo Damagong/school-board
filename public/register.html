@@ -2,16 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>íšŒì›ê°€ì…</title>
+    <title>È¸¿ø°¡ÀÔ</title>
 </head>
 <body>
-    <h1>íšŒì›ê°€ì…</h1>
-
-    <label>ì´ë¦„: <input id="name" /></label><br />
-    <label>í•™ë…„: <input id="grade" /></label><br />
-    <label>ë¹„ë°€ë²ˆí˜¸: <input id="password" type="password" /></label><br />
-
-    <button onclick="register()">ê°€ì…í•˜ê¸°</button>
+    <h1>È¸¿ø°¡ÀÔ</h1>
+    <input id="name" placeholder="ÀÌ¸§"><br />
+    <input id="grade" placeholder="ÇĞ³â"><br />
+    <input id="password" placeholder="ºñ¹Ğ¹øÈ£" type="password"><br />
+    <button onclick="register()">°¡ÀÔÇÏ±â</button>
 
     <script>
     async function register() {
@@ -19,14 +17,17 @@
       const grade = document.getElementById("grade").value;
       const password = document.getElementById("password").value;
 
-      const response = await fetch("http://localhost:3000/register", {
+      const res = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, grade, password })
       });
 
-      const result = await response.text();
-      alert(result);
+      const msg = await res.text();
+      alert(msg);
+      if (msg.includes("È¸¿ø°¡ÀÔ")) {
+        window.location.href = "/login.html";
+      }
     }
     </script>
 </body>
