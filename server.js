@@ -1,14 +1,43 @@
-﻿const express = require("express");
+﻿c// 📦 필요한 모듈 불러오기
+const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-let users = [];
-let posts = [];
-let postIdCounter = 1; // ✅ 반드시 여기 있어야 함
+// 💾 저장소 경로
+const dataDir = path.join(__dirname, "data");
+const usersPath = path.join(dataDir, "users.json");
+const postsPath = path.join(dataDir, "posts.json");
+
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+
+// 📄 파일 불러오기 및 저장 함수
+function loadJSON(filePath, fallback) {
+    try {
+        return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    } catch {
+        return fallback;
+    }
+}
+function saveJSON(filePath, data) {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+}
+
+let users = loadJSON(usersPath, []);
+let posts = loadJSON(postsPath, []);
+let postIdCounter = posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1;
+
+function saveUsers() {
+    saveJSON(usersPath, users);
+}
+function savePosts() {
+    saveJSON(postsPath, posts);
+}
 
 function isBanned(user) {
     return user.bannedUntil && new Date(user.bannedUntil) > new Date();
@@ -22,6 +51,7 @@ app.post("/register", (req, res) => {
 
     const isAdmin = users.length === 0;
     users.push({ name, grade, password, isAdmin, bannedUntil: null });
+    saveData(); // 🔹 추가
 
     res.send(isAdmin ? "최초 관리자 계정이 생성되었습니다!" : "회원가입 완료!");
 });
@@ -64,6 +94,7 @@ app.post("/post", (req, res) => {
     };
 
     posts.push(newPost);
+    saveData(); // 🔹 추가
     res.send("글이 등록되었습니다!");
 });
 
@@ -87,6 +118,7 @@ app.post("/admin/ban", (req, res) => {
 
     if (days === 0) {
         target.bannedUntil = null;
+        saveUsers(); // ✅ 저장
         return res.send(`${targetName}님의 밴이 해제되었습니다.`);
     }
 
@@ -94,6 +126,7 @@ app.post("/admin/ban", (req, res) => {
     until.setDate(until.getDate() + days);
     target.bannedUntil = until.toISOString();
 
+    saveUsers(); // ✅ 저장
     res.send(`${targetName}님은 ${until.toISOString().split("T")[0]}까지 밴되었습니다.`);
 });
 
@@ -114,6 +147,7 @@ app.post("/comment/:postId", (req, res) => {
     };
 
     post.comments.push(comment);
+    saveData(); // 🔹 추가
     res.send("댓글 작성 완료!");
 });
 
@@ -134,6 +168,7 @@ app.post("/vote/:id", (req, res) => {
     else if (voteType === "dislike") post.dislikes += 1;
 
     post.voters[user.name] = voteType;
+    saveData();
     res.send("투표 완료!");
 });
 
@@ -205,6 +240,45 @@ app.post("/vote/:id", (req, res) => {
 
     post.voters[user.name] = voteType;
     res.send("투표 완료!");
+});
+
+app.post("/reply/:postId/:commentId", (req, res) => {
+    const { user, text } = req.body;
+    const post = posts.find(p => p.id === parseInt(req.params.postId));
+    const comment = post?.comments.find(c => c.id === parseInt(req.params.commentId));
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+    if (!post || !comment) return res.status(404).send("댓글을 찾을 수 없습니다.");
+    if (!foundUser || isBanned(foundUser)) return res.status(403).send("밴된 유저는 답글을 달 수 없습니다.");
+
+    const reply = {
+        id: Date.now(),
+        text,
+        author: user.name,
+        grade: user.grade
+    };
+    comment.replies.push(reply);
+    savePosts();
+    res.send("답글이 등록되었습니다.");
+});
+
+app.delete("/comment/:postId/:commentId", (req, res) => {
+    const { user } = req.body;
+    const post = posts.find(p => p.id === parseInt(req.params.postId));
+    const commentId = parseInt(req.params.commentId);
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+    if (!post || !foundUser || isBanned(foundUser)) return res.status(403).send("권한이 없습니다.");
+
+    const comment = post.comments.find(c => c.id === commentId);
+    if (!comment) return res.status(404).send("댓글을 찾을 수 없습니다.");
+
+    const isOwner = comment.author === user.name && comment.grade === user.grade;
+    const isAdmin = foundUser.isAdmin;
+
+    if (!isOwner && !isAdmin) return res.status(403).send("삭제 권한이 없습니다.");
+
+    post.comments = post.comments.filter(c => c.id !== commentId);
+    savePosts();
+    res.send("댓글 삭제 완료!");
 });
 
 // 서버 실행
