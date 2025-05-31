@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>로그인</title>
+</head>
+<body>
+    <h1>로그인</h1>
+    <label>이름: <input id="name" /></label><br />
+    <label>비밀번호: <input id="password" type="password" /></label><br />
+    <button onclick="login()">로그인</button>
+
+    <script>
+        async function login() {
+            const name = document.getElementById("name").value;
+            const password = document.getElementById("password").value;
+
+            const res = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, password })
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                alert(msg);
+                return;
+            }
+
+            const user = await res.json();
+
+            // ✅ 로그인 정보를 localStorage에 저장
+            localStorage.setItem("user", JSON.stringify(user));
+
+            alert("로그인 성공!");
+            window.location.href = "/board.html"; // 로그인 후 이동할 페이지
+        }
+
+    </script>
+</body>
+</html>

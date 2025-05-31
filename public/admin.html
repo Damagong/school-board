@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>관리자 페이지</title>
+</head>
+<body>
+    <h1>🛡️ 관리자 페이지</h1>
+    <div id="userList"></div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (!user || !user.name) {
+            alert("로그인 후 이용해주세요.");
+            location.href = "/login.html";
+        }
+
+        async function loadUsers() {
+            const res = await fetch(`/users?name=${user.name}`);
+            if (!res.ok) {
+                alert("접근 권한이 없습니다.");
+                location.href = "/";
+                return;
+            }
+
+            const users = await res.json();
+            const container = document.getElementById("userList");
+            container.innerHTML = users.map(u => `
+  <div>
+    👤 ${u.name} (${u.grade}학년)
+    ${u.isAdmin ? "🛡️ 관리자" : ""}
+    ${u.bannedUntil ? `⛔ 밴됨 ~ ${u.bannedUntil.split("T")[0]}` : ""}
+    
+    ${user.name !== u.name ? `
+      <button onclick="toggleAdmin('${u.name}', ${!u.isAdmin})">
+        ${u.isAdmin ? "권한 회수" : "관리자 부여"}
+      </button>
+      <button onclick="banUser('${u.name}', 7)">7일 밴</button>
+      <button onclick="banUser('${u.name}', 0)">해제</button>
+    ` : ""}
+  </div>
+`).join("");
+        }
+
+        async function toggleAdmin(targetName, isAdmin) {
+            const res = await fetch("/admin/set", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ requester: user.name, targetName, isAdmin })
+            });
+            const msg = await res.text();
+            alert(msg);
+            loadUsers();
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

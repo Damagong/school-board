@@ -1,0 +1,156 @@
+﻿const express = require("express");
+const cors = require("cors");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static("public"));
+
+let users = [];
+let posts = [];
+let postIdCounter = 1; // ✅ 반드시 여기 있어야 함
+
+function isBanned(user) {
+    return user.bannedUntil && new Date(user.bannedUntil) > new Date();
+}
+
+app.post("/register", (req, res) => {
+    const { name, grade, password } = req.body;
+
+    const exists = users.some(user => user.name === name);
+    if (exists) return res.send("이미 존재하는 사용자입니다!");
+
+    const isAdmin = users.length === 0;
+    users.push({ name, grade, password, isAdmin, bannedUntil: null });
+
+    res.send(isAdmin ? "최초 관리자 계정이 생성되었습니다!" : "회원가입 완료!");
+});
+
+app.post("/login", (req, res) => {
+    const { name, password } = req.body;
+    const user = users.find(u => u.name === name && u.password === password);
+
+    if (!user) return res.status(401).send("로그인 실패: 이름 또는 비밀번호가 틀렸습니다.");
+
+    if (isBanned(user)) {
+        return res.status(403).send(`로그인 금지: ${user.bannedUntil}까지 밴 상태입니다.`);
+    }
+
+    res.json({ name: user.name, grade: user.grade, isAdmin: user.isAdmin, bannedUntil: user.bannedUntil });
+});
+
+app.post("/post", (req, res) => {
+    const { title, content, author, grade } = req.body; // ✅ 이 줄 먼저 있어야 함
+
+    console.log("author:", author, "grade:", grade);    // ✅ 그 다음에 써야 됨
+    console.log("현재 users:", users);
+
+    const user = users.find(u => u.name === author && u.grade === grade);
+
+    if (!user) return res.status(401).send("유저 정보가 유효하지 않습니다.");
+    if (isBanned(user)) return res.status(403).send("밴된 유저는 글을 작성할 수 없습니다.");
+
+    const newPost = {
+        id: postIdCounter++,
+        title,
+        content,
+        author,
+        grade,
+        likes: 0,
+        dislikes: 0,
+        voters: {},
+        comments: [],
+        pinned: false
+    };
+
+    posts.push(newPost);
+    res.send("글이 등록되었습니다!");
+});
+
+app.get("/posts", (req, res) => {
+    const sorted = [...posts].sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return b.likes - a.likes; // 좋아요 많은 순
+    });
+    res.json(sorted);
+});
+
+app.post("/admin/ban", (req, res) => {
+    const { requester, targetName, days } = req.body;
+
+    const admin = users.find(u => u.name === requester && u.isAdmin);
+    if (!admin) return res.status(403).send("권한이 없습니다.");
+
+    const target = users.find(u => u.name === targetName);
+    if (!target) return res.status(404).send("대상 유저를 찾을 수 없습니다.");
+
+    if (days === 0) {
+        target.bannedUntil = null;
+        return res.send(`${targetName}님의 밴이 해제되었습니다.`);
+    }
+
+    const until = new Date();
+    until.setDate(until.getDate() + days);
+    target.bannedUntil = until.toISOString();
+
+    res.send(`${targetName}님은 ${until.toISOString().split("T")[0]}까지 밴되었습니다.`);
+});
+
+app.post("/comment/:postId", (req, res) => {
+    const { user, text } = req.body;
+    const post = posts.find(p => p.id === parseInt(req.params.postId));
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+
+    if (!post) return res.status(404).send("게시글을 찾을 수 없습니다.");
+    if (!foundUser || isBanned(foundUser)) return res.status(403).send("밴된 유저는 댓글을 달 수 없습니다.");
+
+    const comment = {
+        id: Date.now(),
+        text,
+        author: user.name,
+        grade: user.grade,
+        replies: []
+    };
+
+    post.comments.push(comment);
+    res.send("댓글 작성 완료!");
+});
+
+app.post("/vote/:id", (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { user, voteType } = req.body;
+
+    const foundUser = users.find(u => u.name === user.name && u.grade === user.grade);
+    const post = posts.find(p => p.id === postId);
+
+    if (!post) return res.status(404).send("글을 찾을 수 없습니다.");
+    if (!foundUser || isBanned(foundUser)) return res.status(403).send("밴된 유저는 투표할 수 없습니다.");
+
+    const previousVote = post.voters[user.name];
+    if (previousVote) return res.status(400).send("이미 투표하셨습니다.");
+
+    if (voteType === "like") post.likes += 1;
+    else if (voteType === "dislike") post.dislikes += 1;
+
+    post.voters[user.name] = voteType;
+    res.send("투표 완료!");
+});
+
+app.post("/admin/pin/:postId", (req, res) => {
+    const { requester, pinned } = req.body;
+    const admin = users.find(u => u.name === requester && u.isAdmin);
+    if (!admin) return res.status(403).send("관리자 권한이 없습니다.");
+
+    const post = posts.find(p => p.id === parseInt(req.params.postId));
+    if (!post) return res.status(404).send("게시글을 찾을 수 없습니다.");
+
+    post.pinned = pinned;
+    res.send(`게시글이 ${pinned ? "고정" : "고정 해제"}되었습니다.`);
+});
+
+// 서버 실행
+app.listen(3000, () => {
+    console.log("서버 실행됨: http://localhost:3000");
+});
+

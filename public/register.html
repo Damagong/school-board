@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>회원가입</title>
+</head>
+<body>
+    <h1>회원가입</h1>
+
+    <label>이름: <input id="name" /></label><br />
+    <label>학년: <input id="grade" /></label><br />
+    <label>비밀번호: <input id="password" type="password" /></label><br />
+
+    <button onclick="register()">가입하기</button>
+
+    <script>
+    async function register() {
+      const name = document.getElementById("name").value;
+      const grade = document.getElementById("grade").value;
+      const password = document.getElementById("password").value;
+
+      const response = await fetch("http://localhost:3000/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, grade, password })
+      });
+
+      const result = await response.text();
+      alert(result);
+    }
+    </script>
+</body>
+</html>
