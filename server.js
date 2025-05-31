@@ -1,4 +1,4 @@
-﻿c// 📦 필요한 모듈 불러오기
+﻿// 📦 필요한 모듈 불러오기
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
