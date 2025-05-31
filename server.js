@@ -51,7 +51,7 @@ app.post("/register", (req, res) => {
 
     const isAdmin = users.length === 0;
     users.push({ name, grade, password, isAdmin, bannedUntil: null });
-    saveData(); // 🔹 추가
+    saveUsers(); // 🔹 추가
 
     res.send(isAdmin ? "최초 관리자 계정이 생성되었습니다!" : "회원가입 완료!");
 });
@@ -94,7 +94,7 @@ app.post("/post", (req, res) => {
     };
 
     posts.push(newPost);
-    saveData(); // 🔹 추가
+    savePosts(); // 🔹 추가
     res.send("글이 등록되었습니다!");
 });
 
@@ -147,7 +147,7 @@ app.post("/comment/:postId", (req, res) => {
     };
 
     post.comments.push(comment);
-    saveData(); // 🔹 추가
+    savePosts(); // 🔹 추가
     res.send("댓글 작성 완료!");
 });
 
@@ -168,7 +168,7 @@ app.post("/vote/:id", (req, res) => {
     else if (voteType === "dislike") post.dislikes += 1;
 
     post.voters[user.name] = voteType;
-    saveData();
+    savePosts();
     res.send("투표 완료!");
 });
 
@@ -197,6 +197,7 @@ app.delete("/post/:id", (req, res) => {
     }
 
     posts = posts.filter(p => p.id !== postId);
+    savePosts()
     res.send("삭제 완료!");
 });
 
@@ -217,6 +218,7 @@ app.put("/post/:id", (req, res) => {
 
     post.title = title;
     post.content = content;
+    savePosts()
     res.send("수정 완료!");
 });
 
@@ -239,6 +241,7 @@ app.post("/vote/:id", (req, res) => {
     else if (voteType === "dislike") post.dislikes = (post.dislikes || 0) + 1;
 
     post.voters[user.name] = voteType;
+    savePosts()
     res.send("투표 완료!");
 });
 
