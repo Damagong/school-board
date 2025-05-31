@@ -42,12 +42,33 @@
             window.location.href = "/login.html";
         }
 
-        async function writePost() {
-            const title = document.getElementById("title").value;
+        <script>
+            async function writePost() {
+        const title = document.getElementById("title").value;
             const content = document.getElementById("content").value;
             const user = JSON.parse(localStorage.getItem("user"));
 
-            console.log("작성 시도", { title, content, user });
+            if (!user || !user.name) {
+                alert("로그인이 필요합니다!");
+            return;
+        }
+
+            const res = await fetch("/post", {
+                method: "POST",
+            headers: {"Content-Type": "application/json" },
+            body: JSON.stringify({
+                title,
+                content,
+                author: user.name,
+            grade: user.grade
+          })
+        });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+      }
+    </script>
 
 
             const res = await fetch("/post", {
