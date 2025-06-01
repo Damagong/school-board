@@ -1,65 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>5학년 게시판</title>
-    <script defer src="/common.js"></script>
+  <meta charset="UTF-8" />
+  <title>5학년 게시판</title>
 </head>
 <body>
-    <h1> 👍🏻 5학년 게시판</h1>
-
-    <h2>글 작성</h2>
-    <input id="title" placeholder="제목"><br />
-    <textarea id="content" placeholder="내용"></textarea><br />
-    <button onclick="writePost()">작성하기</button>
-
-    <h2>📄 글 목록</h2>
-    <div id="posts"></div>
-
-    <script>
-        const user = JSON.parse(localStorage.getItem("user"));
-        if (!user) {
-            alert("로그인이 필요합니다");
-            location.href = "/login.html";
-        }
-
-        const currentGrade = 5;
-
-        async function loadPosts() {
-            const res = await fetch("/posts");
-            const allPosts = await res.json();
-            const posts = allPosts.filter(p => p.grade === currentGrade);
-
-            const container = document.getElementById("posts");
-            container.innerHTML = posts.map(p => `
-                <div style="border:1px solid #aaa; margin:10px; padding:10px;">
-                    <strong>${p.title}</strong> (${p.grade}학년 ${p.author})<br/>
-                    <pre>${p.content}</pre>
-                </div>
-            `).join("");
-        }
-
-        async function writePost() {
-            const title = document.getElementById("title").value;
-            const content = document.getElementById("content").value;
-
-            const res = await fetch("/post", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title,
-                    content,
-                    author: user.name,
-                    grade: user.grade
-                })
-            });
-
-            const msg = await res.text();
-            alert(msg);
-            loadPosts();
-        }
-
-        loadPosts();
-    </script>
+  <h1>5학년 게시판</h1>
+  <a href="createPost.html?board=grade5">글쓰기</a>
+  <div id="posts-container"></div>
+  <script>
+    const board = "grade5";
+    fetch(`/posts?board=${board}`)
+      .then(res => res.json())
+      .then(posts => {
+        const container = document.getElementById('posts-container');
+        container.innerHTML = posts.map(p => `<div><a href="/post/${p._id}">${p.title}</a></div>`).join('');
+      });
+  </script>
 </body>
 </html>

@@ -87,20 +87,20 @@
       <strong>${p.pinned ? "📌 " : ""}${p.title}</strong> (${p.grade}학년 ${p.author})<br/>
       <pre>${p.content}</pre>
       <div>
-        👍 ${p.likes} <button onclick="votePost(${p.id}, 'like')">좋아요</button>
-        👎 ${p.dislikes} <button onclick="votePost(${p.id}, 'dislike')">싫어요</button>
+        👍 ${p.likes} <button onclick="votePost('${p._id}', 'like')">좋아요</button>
+        👎 ${p.dislikes} <button onclick="votePost('${p._id}', 'dislike')">싫어요</button>
       </div>
       ${(isMine || user.isAdmin) ? `
-        <button onclick="editPost(${p.id}, '${p.title}', \`${p.content}\`)">✏️ 수정</button>
-        <button onclick="deletePost(${p.id})">🗑 삭제</button>
-        ${user.isAdmin ? `<button onclick="togglePin(${p.id}, ${p.pinned})">${p.pinned ? "📌 고정 해제" : "📌 고정"}</button>` : ""}
+        <button onclick="editPost('${p._id}', '${p.title}', \`${p.content}\`)">✏️ 수정</button>
+        <button onclick="deletePost('${p._id}')">🗑 삭제</button>
+        ${user.isAdmin ? `<button onclick="togglePin('${p._id}', ${p.pinned})">${p.pinned ? "📌 고정 해제" : "📌 고정"}</button>` : ""}
       ` : ""}
 
       ${p.comments.map(c => `
         <div style="margin-left: 10px; border-top: 1px solid #ddd; padding-top: 4px;">
           🗨️ ${c.text} - ${c.grade}학년 ${c.author}
           ${user.name === c.author && user.grade === c.grade ?
-                        `<button onclick="deleteComment(${p.id}, ${c.id})">삭제</button>` : ""}
+                        `<button onclick="deleteComment('${p._id}', '${c._id}')">삭제</button>` : ""}
           <br/>
           <input id="reply-${p.id}-${c.id}" placeholder="답글 작성" />
           <button onclick="writeReply(${p.id}, ${c.id})">답글</button>
@@ -108,15 +108,15 @@
             ${c.replies.map(r => `
               🔁 ${r.text} - ${r.grade}학년 ${r.author}
               ${user.name === r.author && user.grade === r.grade ?
-                                `<button onclick="deleteReply(${p.id}, ${c.id}, ${r.id})">삭제</button>` : ""}
+                                `<button onclick="deleteReply('${p._id}', '${c._id}', '${r_id}')">삭제</button>` : ""}
               <br/>
             `).join("")}
           </div>
         </div>
       `).join("")}
 
-      <input placeholder="댓글 작성" id="comment-${p.id}" />
-      <button onclick="writeComment(${p.id})">등록</button>
+      <input placeholder="댓글 작성" id="comment-'${p._id}'" />
+      <button onclick="writeComment('${p._id}')">등록</button>
 </div>
         `;
             }).join("");
