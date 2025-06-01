@@ -1,21 +1,239 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>2학년 게시판</title>
+    <meta charset="UTF-8">
+    <title>광장 게시판</title>
 </head>
 <body>
-  <h1>2학년 게시판</h1>
-  <a href="createPost.html?board=grade2">글쓰기</a>
-  <div id="posts-container"></div>
-  <script>
-    const board = "grade2";
-    fetch(`/posts?board=${board}`)
-      .then(res => res.json())
-      .then(posts => {
-        const container = document.getElementById('posts-container');
-        container.innerHTML = posts.map(p => `<div><a href="/post/${p._id}">${p.title}</a></div>`).join('');
-      });
-  </script>
+    <h1>📢 광장 게시판</h1>
+
+    <h2>글 작성</h2>
+    <input id="title" placeholder="제목"><br />
+    <textarea id="content" placeholder="내용"></textarea><br />
+    <button onclick="writePost()">작성하기</button>
+    <button onclick="logout()">로그아웃</button>
+
+    <h2>📄 전체 글 목록</h2>
+    <div id="posts"></div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (!user) {
+            alert("로그인이 필요합니다!");
+            window.location.href = "/login.html";
+        }
+
+        function isUserBanned() {
+            return user.bannedUntil && new Date(user.bannedUntil) > new Date();
+        }
+
+        function logout() {
+            localStorage.removeItem("user");
+            alert("로그아웃되었습니다.");
+            location.href = "/login.html";
+        }
+
+        async function writePost() {
+            if (isUserBanned()) {
+                alert("밴된 유저는 글을 작성할 수 없습니다.");
+                return;
+            }
+
+            const title = document.getElementById("title").value;
+            const content = document.getElementById("content").value;
+
+            const res = await fetch("/post", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    author: user.name,
+                    grade: user.grade
+                })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        async function votePost(id, voteType) {
+            const res = await fetch(`/vote/${id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user, voteType })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        async function loadPosts() {
+            const res = await fetch("/posts");
+            const posts = await res.json();
+
+            const container = document.getElementById("posts");
+
+            const pinned = posts.filter(p => p.pinned);
+            const others = posts.filter(p => !p.pinned);
+            const sorted = [...pinned, ...others];
+
+            container.innerHTML = sorted.map(p => {
+                const isMine = user.name === p.author && user.grade === p.grade;
+                return `
+<div style="border:1px solid #aaa; margin:10px; padding:10px;">
+      <strong>${p.pinned ? "📌 " : ""}${p.title}</strong> (${p.grade}학년 ${p.author})<br/>
+      <pre>${p.content}</pre>
+      <div>
+        👍 ${p.likes} <button onclick="votePost('${p._id}', 'like')">좋아요</button>
+        👎 ${p.dislikes} <button onclick="votePost('${p._id}', 'dislike')">싫어요</button>
+      </div>
+      ${(isMine || user.isAdmin) ? `
+        <button onclick="editPost('${p._id}', '${p.title}', \`${p.content}\`)">✏️ 수정</button>
+        <button onclick="deletePost('${p._id}')">🗑 삭제</button>
+        ${user.isAdmin ? `<button onclick="togglePin('${p._id}', ${p.pinned})">${p.pinned ? "📌 고정 해제" : "📌 고정"}</button>` : ""}
+      ` : ""}
+
+      ${p.comments.map(c => `
+        <div style="margin-left: 10px; border-top: 1px solid #ddd; padding-top: 4px;">
+          🗨️ ${c.text} - ${c.grade}학년 ${c.author}
+          ${user.name === c.author && user.grade === c.grade ?
+                        `<button onclick="deleteComment('${p._id}', '${c._id}')">삭제</button>` : ""}
+          <br/>
+          <input id="reply-${p.id}-${c.id}" placeholder="답글 작성" />
+          <button onclick="writeReply(${p.id}, ${c.id})">답글</button>
+          <div style="margin-left: 20px;">
+            ${c.replies.map(r => `
+              🔁 ${r.text} - ${r.grade}학년 ${r.author}
+              ${user.name === r.author && user.grade === r.grade ?
+                                `<button onclick="deleteReply('${p._id}', '${c._id}', '${r_id}')">삭제</button>` : ""}
+              <br/>
+            `).join("")}
+          </div>
+        </div>
+      `).join("")}
+
+      <input placeholder="댓글 작성" id="comment-'${p._id}'" />
+      <button onclick="writeComment('${p._id}')">등록</button>
+</div>
+        `;
+            }).join("");
+        }
+
+        async function deletePost(id) {
+            const confirmed = confirm("정말 삭제하시겠습니까?");
+            if (!confirmed) return;
+
+            const res = await fetch(`/post/${id}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        function editPost(id, title, content) {
+            const newTitle = prompt("제목을 수정하세요", title);
+            const newContent = prompt("내용을 수정하세요", content);
+            if (newTitle && newContent) {
+                updatePost(id, newTitle, newContent);
+            }
+        }
+
+        async function updatePost(id, title, content) {
+            const res = await fetch(`/post/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, content, user })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        async function writeComment(postId) {
+            if (isUserBanned()) {
+                alert("밴된 유저는 댓글을 작성할 수 없습니다.");
+                return;
+            }
+
+            const input = document.getElementById(`comment-${postId}`);
+            const text = input.value;
+
+            const res = await fetch(`/comment/${postId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user, text })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            input.value = "";
+            loadPosts();
+        }
+
+        async function deleteComment(postId, commentId) {
+            const res = await fetch(`/comment/${postId}/${commentId}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        async function writeReply(postId, commentId) {
+            const input = document.getElementById(`reply-${postId}-${commentId}`);
+            const text = input.value;
+
+            const res = await fetch(`/reply/${postId}/${commentId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user, text })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            input.value = "";
+            loadPosts();
+        }
+
+        async function deleteReply(postId, commentId, replyId) {
+            const res = await fetch(`/reply/${postId}/${commentId}/${replyId}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        async function togglePin(postId, currentPinned) {
+            const res = await fetch(`/admin/pin/${postId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    requester: user.name,
+                    pinned: !currentPinned
+                })
+            });
+
+            const msg = await res.text();
+            alert(msg);
+            loadPosts();
+        }
+
+        loadPosts();
+    </script>
 </body>
 </html>
