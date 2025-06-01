@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-const uri = "mongodb+srv://tartine2008:3$141592@@cluster0.k0zqtoj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; // 여기에 MongoDB Atlas URI 입력
+const uri = process.env.MONGODB_URI; // 여기에 MongoDB Atlas URI 입력
 const client = new MongoClient(uri);
 let usersCollection, postsCollection;
 
